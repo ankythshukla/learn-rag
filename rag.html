@@ -1,0 +1,137 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RAG Simulator</title>
+<style>
+body{margin:0;font-family:Inter,Arial,sans-serif;background:#0f172a;color:#e2e8f0}
+header{padding:20px;text-align:center;background:#111827;border-bottom:1px solid #334155}
+.container{display:grid;grid-template-columns:1.2fr .8fr;gap:18px;padding:18px}
+.card{background:rgba(30,41,59,.9);border:1px solid #334155;border-radius:16px;padding:16px}
+h2,h3{margin:.2rem 0}
+button{background:#3b82f6;color:#fff;border:none;padding:10px 16px;border-radius:10px;cursor:pointer;margin:4px}
+button:hover{background:#2563eb}
+textarea,input{width:100%;background:#0f172a;color:#fff;border:1px solid #475569;border-radius:8px;padding:8px}
+.step{padding:10px;margin:8px 0;border-left:4px solid #64748b;background:#1e293b;opacity:.45;transition:.3s}
+.step.active{opacity:1;border-left-color:#22c55e;transform:translateX(6px)}
+pre{white-space:pre-wrap;background:#020617;padding:8px;border-radius:8px}
+.small{font-size:13px;color:#cbd5e1}
+#vectors span{display:inline-block;width:8px;margin-right:1px;background:#60a5fa}
+</style>
+</head>
+<body>
+<header><h1>Interactive RAG Simulator</h1><div>Understand Retrieval Augmented Generation step by step</div></header>
+
+<div class="container">
+<div class="card">
+<h2>Sample Documents</h2>
+<textarea id="docs" rows="8">RAG stands for Retrieval Augmented Generation.
+
+Embeddings convert text into vectors.
+
+Vector databases store embeddings together with the original text and metadata.
+
+Similarity search retrieves the most relevant chunks before calling the LLM.</textarea>
+
+<h3>User Query</h3>
+<input id="query" value="How does RAG retrieve information?">
+
+<div style="margin-top:12px">
+<button onclick="start()">Run Simulation</button>
+<button onclick="location.reload()">Reset</button>
+</div>
+
+<div id="steps">
+<div class="step">1. Clean & Chunk Documents</div>
+<div class="step">2. Generate Embeddings</div>
+<div class="step">3. Store in Vector DB</div>
+<div class="step">4. Embed User Query</div>
+<div class="step">5. Similarity Search (Top-K)</div>
+<div class="step">6. Prompt Builder</div>
+<div class="step">7. LLM Generates Answer</div>
+</div>
+</div>
+
+<div class="card">
+<h2>Live Output</h2>
+<div id="explain" class="small">Press <b>Run Simulation</b>.</div>
+<pre id="output"></pre>
+<div id="vectors"></div>
+</div>
+</div>
+
+<script>
+const steps=[...document.querySelectorAll(".step")];
+const out=document.getElementById("output");
+const exp=document.getElementById("explain");
+const vectors=document.getElementById("vectors");
+
+function activate(i,msg){
+ steps.forEach((s,n)=>s.classList.toggle("active",n===i));
+ exp.innerHTML=msg;
+}
+
+function fakeVector(text){
+ let arr=[];
+ for(let i=0;i<12;i++) arr.push((text.charCodeAt(i%text.length||0)* (i+3))%100);
+ return arr;
+}
+
+function drawVector(v){
+ vectors.innerHTML="";
+ v.forEach(x=>{
+  let s=document.createElement("span");
+  s.style.height=(10+x)+"px";
+  vectors.appendChild(s);
+ });
+}
+
+async function pause(ms){return new Promise(r=>setTimeout(r,ms));}
+
+async function start(){
+ out.textContent="";
+ vectors.innerHTML="";
+ const docs=document.getElementById("docs").value.split(/\n\s*\n|\n/).filter(Boolean);
+
+ activate(0,"Documents are cleaned and split into smaller chunks.");
+ await pause(700);
+ out.textContent="Chunks:\n\n";
+ docs.forEach((d,i)=>out.textContent+=`Chunk ${i+1}: ${d}\n\n`);
+
+ activate(1,"Each chunk is converted into an embedding vector.");
+ await pause(900);
+ const chunkVectors=docs.map(fakeVector);
+ drawVector(chunkVectors[0]);
+ out.textContent+="Example embedding for Chunk 1:\n["+chunkVectors[0].join(", ")+"]\n\n";
+
+ activate(2,"Vectors + original text + metadata are stored in the Vector Database.");
+ await pause(900);
+ out.textContent+="Vector DB contains:\n";
+ docs.forEach((d,i)=>out.textContent+=`• Vector ${i+1} -> "${d.slice(0,40)}..."\n`);
+
+ activate(3,"The user query is also embedded.");
+ await pause(900);
+ const q=document.getElementById("query").value;
+ const qv=fakeVector(q);
+ drawVector(qv);
+ out.textContent+="\n\nQuery:\n"+q+"\nEmbedding:\n["+qv.join(", ")+"]\n";
+
+ activate(4,"Similarity search compares the query vector against stored vectors.");
+ await pause(1000);
+ out.textContent+="\n\nTop-2 Retrieved Chunks:\n";
+ out.textContent+="1. Embeddings convert text into vectors.\n";
+ out.textContent+="2. Similarity search retrieves the most relevant chunks.\n";
+
+ activate(5,"Prompt Builder combines retrieved text with the user's question.");
+ await pause(1000);
+ out.textContent+="\n\nPrompt Sent to LLM:\n----------------------\nContext:\nEmbeddings convert text into vectors.\nSimilarity search retrieves the most relevant chunks.\n\nQuestion:\n"+q+"\n";
+
+ activate(6,"The LLM answers using the retrieved context (not the vectors).");
+ await pause(1200);
+ out.textContent+="\n\nFinal Answer:\nRAG first retrieves the most relevant document chunks using vector similarity search. Those retrieved text chunks are added to your question to build a prompt. The LLM then generates an answer grounded in that retrieved context, reducing hallucinations.";
+}
+</script>
+</body>
+</html>
